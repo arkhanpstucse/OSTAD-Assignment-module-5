@@ -1,0 +1,166 @@
+name: CI/CD Pipeline - Module 5 Assignment
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    outputs:
+      test_status: ${{ steps.test_outcome.outputs.status }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '22'  # As per your prerequisites
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Create test results directory
+      run: mkdir -p test-results
+
+    - name: Run application tests
+      id: run_tests
+      run: |
+        echo "Running tests at $(date)" > test-results/test-summary.txt
+        echo "================================" >> test-results/test-summary.txt
+
+        # Run tests using your 'npm run check' script
+        npm run check 2>&1 | tee test-results/test-output.txt
+        TEST_EXIT_CODE=${PIPESTATUS[0]}
+
+        echo "Test exit code: $TEST_EXIT_CODE" >> test-results/test-summary.txt
+
+        if [ $TEST_EXIT_CODE -eq 0 ]; then
+          echo "✅ Tests passed successfully" >> test-results/test-summary.txt
+          echo "status=passed" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Tests failed" >> test-results/test-summary.txt
+          echo "status=failed" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Upload test results as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: test-results/
+        retention-days: 7
+
+    - name: Display test results in summary
+      run: |
+        echo "## 📊 Test Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Test Output Preview" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        cat test-results/test-output.txt >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+
+    - name: Set test outcome
+      id: test_outcome
+      run: echo "status=${{ steps.run_tests.outputs.status }}" >> $GITHUB_OUTPUT
+
+  deploy:
+    needs: test
+    runs-on: self-hosted
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Download test results artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: test-results
+        path: downloaded-test-results
+
+    - name: Display artifact content
+      run: |
+        echo "## 📦 Downloaded Artifact Content" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### File Listing" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        ls -la downloaded-test-results/ >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Complete Test Output" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        cat downloaded-test-results/test-output.txt >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+
+    - name: Setup Node.js on self-hosted runner
+      run: |
+        if ! command -v node &> /dev/null; then
+          echo "Node.js not found, installing version 22..."
+          curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+          sudo apt-get install -y nodejs
+        fi
+        node --version
+        npm --version
+
+    - name: Install PM2 globally
+      run: |
+        if ! command -v pm2 &> /dev/null; then
+          npm install -g pm2
+        fi
+        pm2 --version
+
+    - name: Install dependencies
+      run: npm ci  # Install all dependencies as per your setup
+
+    - name: Deploy Application
+      run: |
+        echo "## 🚀 Starting Deployment" >> $GITHUB_STEP_SUMMARY
+
+        # Cleanup: Remove existing process (as per your README)
+        pm2 delete node-app || true
+        echo "- Cleanup completed" >> $GITHUB_STEP_SUMMARY
+
+        # Start Application with absolute path (as per your README)
+        pm2 start "./src/server.js" --name node-app
+        echo "- Application started with PM2" >> $GITHUB_STEP_SUMMARY
+
+        # Save Process List (as per your README)
+        pm2 save
+        echo "- PM2 process list saved" >> $GITHUB_STEP_SUMMARY
+
+        sleep 5
+
+    - name: Verify deployment
+      run: |
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### ✅ Deployment Verification" >> $GITHUB_STEP_SUMMARY
+
+        # Check if application is running
+        if curl -s http://localhost:3000 > /dev/null; then
+          echo "- Application is running on port 3000" >> $GITHUB_STEP_SUMMARY
+
+          # Verify / route
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000)
+          echo "- Home route (/) status: \`$HTTP_STATUS\`" >> $GITHUB_STEP_SUMMARY
+
+          # Verify /api route
+          API_RESPONSE=$(curl -s http://localhost:3000/api)
+          echo "- API response: \`$API_RESPONSE\`" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ❌ Application failed to start" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi
+
+    - name: Display PM2 status
+      run: |
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### PM2 Process Status" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        pm2 show node-app >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
