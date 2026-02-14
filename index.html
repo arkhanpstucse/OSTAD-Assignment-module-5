@@ -1,13 +1,177 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 CI/CD Pipeline - Module 5 Assignment</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 3rem;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            max-width: 800px;
+            margin: 20px;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            animation: fadeIn 1s ease-in;
+        }
+        .badge {
+            background: #4CAF50;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            display: inline-block;
+            margin: 1rem 0;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+        .status-box {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            text-align: left;
+        }
+        .status-item {
+            margin: 1rem 0;
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .label {
+            font-weight: bold;
+            color: #ffd700;
+            display: inline-block;
+            width: 150px;
+        }
+        .value {
+            color: white;
+        }
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .api-link {
+            background: white;
+            color: #667eea;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 1rem;
+            transition: transform 0.3s ease;
+        }
+        .api-link:hover {
+            transform: scale(1.05);
+            background: #f0f0f0;
+        }
+        .deployment-time {
+            font-size: 0.9rem;
+            color: #ddd;
+            margin-top: 2rem;
+            font-style: italic;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 CI/CD Pipeline Demo</h1>
+        
+        <div class="badge">
+            ✅ Deployment Successful via GitHub Actions
+        </div>
+
+        <div class="status-box">
+            <h2>📊 Deployment Information</h2>
+            
+            <div class="status-item">
+                <span class="label">Status:</span>
+                <span class="value success">● LIVE</span>
+            </div>
+            
+            <div class="status-item">
+                <span class="label">Pipeline:</span>
+                <span class="value">GitHub Actions CI/CD</span>
+            </div>
+            
+            <div class="status-item">
+                <span class="label">Runner:</span>
+                <span class="value">Self-Hosted EC2</span>
+            </div>
+            
+            <div class="status-item">
+                <span class="label">Process Manager:</span>
+                <span class="value">PM2</span>
+            </div>
+            
+            <div class="status-item">
+                <span class="label">Server:</span>
+                <span class="value">13.218.232.60:3000</span>
+            </div>
+            
+            <div class="status-item">
+                <span class="label">Last Updated:</span>
+                <span class="value" id="timestamp"></span>
+            </div>
+            
+            <div class="status-item">
+                <span class="label">Git Commit:</span>
+                <span class="value" id="commit-hash"></span>
+            </div>
+        </div>
+
+        <h2>🔍 Test Your Pipeline</h2>
+        <p>Make a change to this file and push to GitHub - watch it auto-deploy!</p>
+        
+        <a href="/api" class="api-link" target="_blank">🔄 Test API Endpoint →</a>
+        
+        <div class="deployment-time">
+            ⚡ Continuous Deployment Active • Every push triggers a new deployment
+        </div>
+    </div>
+
+    <script>
+        // Add timestamp
+        document.getElementById('timestamp').textContent = new Date().toLocaleString();
+        
+        // Try to get commit hash from meta tag (you can add this in your deployment)
+        fetch('/api')
+            .then(res => res.json())
+            .then(data => {
+                if (data.message) {
+                    document.getElementById('commit-hash').textContent = 
+                        data.message + ' (via API)';
+                }
+            })
+            .catch(() => {
+                document.getElementById('commit-hash').textContent = 
+                    'Auto-detected via CI/CD';
+            });
+    </script>
+</body>
 </html>
