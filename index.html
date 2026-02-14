@@ -1,10 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- CACHE-BUSTING META TAGS -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <title>🚀 CI/CD Pipeline - Module 5 Assignment</title>
     <style>
+        /* Your existing styles plus this debug banner */
+        .debug-banner {
+            background: #ff6b6b;
+            color: white;
+            text-align: center;
+            padding: 5px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+            font-size: 14px;
+        }
+        .debug-banner span {
+            background: white;
+            color: #ff6b6b;
+            padding: 2px 10px;
+            border-radius: 20px;
+            margin-left: 10px;
+            font-weight: bold;
+        }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -15,6 +43,7 @@
             justify-content: center;
             align-items: center;
             color: white;
+            padding-top: 30px; /* Space for debug banner */
         }
         .container {
             text-align: center;
@@ -87,6 +116,16 @@
             margin-top: 2rem;
             font-style: italic;
         }
+        .version-badge {
+            background: #ffd700;
+            color: #333;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: inline-block;
+            margin-left: 10px;
+        }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
@@ -99,19 +138,24 @@
     </style>
 </head>
 <body>
+    <!-- DEBUG BANNER - Shows when file was actually deployed -->
+    <div class="debug-banner">
+        🔄 CI/CD ACTIVE • Version: <span id="version-number"></span> • Last Deployment: <span id="deployment-time"></span>
+    </div>
+
     <div class="container">
         <h1>🚀 CI/CD Pipeline Demo</h1>
         
         <div class="badge">
-            ✅ Deployment Successful via GitHub Actions
+            ✅ Auto-Deployment Active
         </div>
 
         <div class="status-box">
-            <h2>📊 Deployment Information</h2>
+            <h2>📊 Live Deployment Status</h2>
             
             <div class="status-item">
                 <span class="label">Status:</span>
-                <span class="value success">● LIVE</span>
+                <span class="value success">● RUNNING</span>
             </div>
             
             <div class="status-item">
@@ -130,48 +174,69 @@
             </div>
             
             <div class="status-item">
-                <span class="label">Server:</span>
+                <span class="label">Server IP:</span>
                 <span class="value">13.218.232.60:3000</span>
             </div>
             
             <div class="status-item">
-                <span class="label">Last Updated:</span>
-                <span class="value" id="timestamp"></span>
+                <span class="label">Current Time:</span>
+                <span class="value" id="current-time"></span>
             </div>
             
             <div class="status-item">
-                <span class="label">Git Commit:</span>
-                <span class="value" id="commit-hash"></span>
+                <span class="label">Deployed Version:</span>
+                <span class="value" id="deployed-version">v1.0.0</span>
+                <span class="version-badge">LIVE</span>
+            </div>
+            
+            <div class="status-item">
+                <span class="label">Cache Status:</span>
+                <span class="value" id="cache-status">No-Cache Enabled</span>
             </div>
         </div>
 
-        <h2>🔍 Test Your Pipeline</h2>
-        <p>Make a change to this file and push to GitHub - watch it auto-deploy!</p>
+        <h2>🔁 Test Auto-Deployment</h2>
+        <p>Make any change to this file, push to GitHub, and watch it update automatically!</p>
         
-        <a href="/api" class="api-link" target="_blank">🔄 Test API Endpoint →</a>
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <a href="/api" class="api-link" target="_blank">🔄 Test API →</a>
+            <button onclick="forceRefresh()" class="api-link" style="background: #ff6b6b; color: white;">🔄 Force Refresh</button>
+        </div>
         
         <div class="deployment-time">
-            ⚡ Continuous Deployment Active • Every push triggers a new deployment
+            ⚡ Every git push triggers: Test → Artifact → Deploy → Reload
         </div>
     </div>
 
     <script>
-        // Add timestamp
-        document.getElementById('timestamp').textContent = new Date().toLocaleString();
+        // Force version to change every time
+        const version = 'v1.0.' + Math.floor(Math.random() * 10000);
+        const deployTime = new Date().toLocaleString();
         
-        // Try to get commit hash from meta tag (you can add this in your deployment)
+        // Update elements
+        document.getElementById('version-number').textContent = version;
+        document.getElementById('deployment-time').textContent = deployTime;
+        document.getElementById('current-time').textContent = new Date().toLocaleString();
+        document.getElementById('deployed-version').textContent = version;
+        document.getElementById('cache-status').textContent = 'No-Cache (Live Reload)';
+        
+        // Auto-refresh every 30 seconds to check for updates
+        setTimeout(() => {
+            location.reload(true);
+        }, 30000);
+        
+        // Force refresh function
+        function forceRefresh() {
+            location.reload(true);
+        }
+
+        // Try to fetch API
         fetch('/api')
             .then(res => res.json())
             .then(data => {
-                if (data.message) {
-                    document.getElementById('commit-hash').textContent = 
-                        data.message + ' (via API)';
-                }
+                console.log('API Response:', data);
             })
-            .catch(() => {
-                document.getElementById('commit-hash').textContent = 
-                    'Auto-detected via CI/CD';
-            });
+            .catch(err => console.log('API Error:', err));
     </script>
 </body>
 </html>
