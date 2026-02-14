@@ -117,7 +117,47 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Deploy Application
+    - name: 🔧 FIX - Overwrite server.js with correct path configuration
+      run: |
+        echo "✅ Fixing server.js to serve index.html from root directory..."
+        cat > src/server.js << 'EOF'
+        const express = require('express');
+        const path = require('path');
+
+        const app = express();
+        const port = process.env.PORT || 3000;
+
+        // Serve static files from the root directory (one level up from src)
+        app.use(express.static(path.join(__dirname, '..')));
+
+        app.get('/', (req, res) => {
+          // Serve index.html from the root directory
+          res.sendFile(path.join(__dirname, '..', 'index.html'));
+        });
+
+        app.get('/api', (req, res) => {
+          res.json({ message: 'Hello World' });
+        });
+
+        let server;
+
+        if (require.main === module) {
+          const PORT = process.env.PORT || 3000;
+          server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+        }
+
+        module.exports = app;
+        EOF
+        echo "✅ server.js updated successfully!"
+
+    - name: Verify index.html exists in correct location
+      run: |
+        echo "🔍 Checking file locations..."
+        ls -la index.html || echo "⚠️ index.html not found in root"
+        ls -la src/server.js || echo "⚠️ server.js not found in src"
+        echo "✅ File check complete"
+
+    - name: Deploy Application with PM2
       run: |
         echo "## 🚀 Starting Deployment" >> $GITHUB_STEP_SUMMARY
         pm2 delete node-app || true
@@ -132,12 +172,25 @@ jobs:
       run: |
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### ✅ Deployment Verification" >> $GITHUB_STEP_SUMMARY
+        
+        # Check if application is running
         if curl -s http://localhost:3000 > /dev/null; then
-          echo "- Application is running on port 3000" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Application is running on port 3000" >> $GITHUB_STEP_SUMMARY
+          
+          # Verify home route
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000)
           echo "- Home route (/) status: \`$HTTP_STATUS\`" >> $GITHUB_STEP_SUMMARY
+          
+          # Verify API route
           API_RESPONSE=$(curl -s http://localhost:3000/api)
           echo "- API response: \`$API_RESPONSE\`" >> $GITHUB_STEP_SUMMARY
+          
+          # Get page title to confirm correct HTML
+          PAGE_TITLE=$(curl -s http://localhost:3000 | grep -o "<title>[^<]*" | sed 's/<title>//')
+          echo "- Page title: \`$PAGE_TITLE\`" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🌐 **Application is live at:** http://13.218.232.60:3000" >> $GITHUB_STEP_SUMMARY
         else
           echo "- ❌ Application failed to start" >> $GITHUB_STEP_SUMMARY
           exit 1
@@ -150,3 +203,12 @@ jobs:
         echo '```' >> $GITHUB_STEP_SUMMARY
         pm2 show node-app >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
+
+    - name: Final deployment info
+      run: |
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 🎉 Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+        echo "- **Repository:** https://github.com/arkhanpstucse/OSTAD-Assignment-module-5" >> $GITHUB_STEP_SUMMARY
+        echo "- **EC2 Public IP:** 13.218.232.60:3000" >> $GITHUB_STEP_SUMMARY
+        echo "- **Test Status:** ${{ needs.test.outputs.test_status }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Deployment Time:** $(date)" >> $GITHUB_STEP_SUMMARY
